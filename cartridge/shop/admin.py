@@ -135,8 +135,8 @@ if len(other_product_fields) > 0:
         "fields": tuple(other_product_fields)}))
 
 product_list_display = ["admin_thumb", "title", "status", "available",
-                        "admin_link"]
-product_list_editable = ["status", "available"]
+                        "publish_date", "admin_link"]
+product_list_editable = ["status", "available", "publish_date"]
 
 # If variations are used, set up the product option fields for managing
 # variations. If not, expose the denormalised price fields for a product
