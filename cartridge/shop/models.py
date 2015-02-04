@@ -289,12 +289,6 @@ class ProductVariation(with_metaclass(ProductVariationMetaclass, Priced)):
             return None
         if not hasattr(self, "_cached_num_in_stock"):
             num_in_stock = self.num_in_stock
-            carts = Cart.objects.current()
-            items = CartItem.objects.filter(sku=self.sku, cart__in=carts)
-            aggregate = items.aggregate(quantity_sum=models.Sum("quantity"))
-            num_in_carts = aggregate["quantity_sum"]
-            if num_in_carts is not None:
-                num_in_stock = num_in_stock - num_in_carts
             self._cached_num_in_stock = num_in_stock
         return self._cached_num_in_stock
 
