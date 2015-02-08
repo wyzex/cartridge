@@ -62,7 +62,7 @@ shipping_fields = _flds("shipping_detail")
 # Categories fieldsets are extended from Page fieldsets, since
 # categories are a Mezzanine Page type.
 category_fieldsets = deepcopy(PageAdmin.fieldsets)
-category_fieldsets[0][1]["fields"][3:3] = ["content", "products"]
+category_fieldsets[0][1]["fields"][3:3] = ["content", "additional_content", "products"]
 category_fieldsets += ((_("Product filters"), {
     "fields": ("sale", ("price_min", "price_max"), "combined"),
     "classes": ("collapse-closed",)},),)
@@ -121,7 +121,7 @@ class ProductImageAdmin(TabularDynamicInlineAdmin):
 
 product_fieldsets = deepcopy(DisplayableAdmin.fieldsets)
 product_fieldsets[0][1]["fields"].insert(2, "available")
-product_fieldsets[0][1]["fields"].extend(["content", "categories"])
+product_fieldsets[0][1]["fields"].extend(["content", "additional_content", "categories"])
 product_fieldsets = list(product_fieldsets)
 
 other_product_fields = []

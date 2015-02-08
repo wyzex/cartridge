@@ -17,6 +17,8 @@ from django.utils.timezone import now
 from django.utils.translation import (ugettext, ugettext_lazy as _,
                                       pgettext_lazy as __)
 
+from mezzanine.core.fields import RichTextField
+
 try:
     from django.utils.encoding import force_text
 except ImportError:
@@ -106,6 +108,8 @@ class Product(Displayable, Priced, RichText, AdminThumbMixin):
     Container model for a product that stores information common to
     all of its variations such as the product's title and description.
     """
+
+    additional_content = RichTextField(_("Additional Content"), blank=True, default='')
 
     available = models.BooleanField(_("Available for purchase"),
                                     default=False)
@@ -320,6 +324,8 @@ class Category(Page, RichText):
     """
     A category of products on the website.
     """
+
+    additional_content = RichTextField(_("Additional Content"), blank=True, default='')
 
     featured_image = FileField(verbose_name=_("Featured Image"),
         upload_to=upload_to("shop.Category.featured_image", "shop"),
