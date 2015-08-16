@@ -731,7 +731,7 @@ msgstr "История"
 #: templates/email/order_receipt.txt:5 templates/email/receipt.html:3
 #: templates/email/receipt_rtl.html:3
 msgid "Dear"
-msgstr "Уважаемый"
+msgstr "Уважаемый(ая)"
 
 #: templates/email/order_receipt.txt:7 templates/email/receipt.html:4
 #: templates/email/receipt_rtl.html:4
