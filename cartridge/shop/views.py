@@ -19,18 +19,18 @@ from mezzanine.utils.importing import import_dotted_path
 from mezzanine.utils.views import render, set_cookie, paginate
 from mezzanine.utils.urls import next_url
 
-try:
-    from xhtml2pdf import pisa
-except (ImportError, SyntaxError):
-    pisa = None
-HAS_PDF = pisa is not None
-
 from cartridge.shop import checkout
 from cartridge.shop.forms import (AddProductForm, CartItemFormSet,
                                   DiscountForm, OrderForm)
 from cartridge.shop.models import Product, ProductVariation, Order
 from cartridge.shop.models import DiscountCode
 from cartridge.shop.utils import recalculate_cart, sign
+
+try:
+    from xhtml2pdf import pisa
+except (ImportError, SyntaxError):
+    pisa = None
+HAS_PDF = pisa is not None
 
 
 # Set up checkout handlers.
@@ -42,7 +42,7 @@ order_handler = handler(settings.SHOP_HANDLER_ORDER)
 
 
 def product(request, slug, template="shop/product.html",
-            form_class=AddProductForm):
+            form_class=AddProductForm, extra_context=None):
     """
     Display a product - convert the product variations to JSON as well as
     handling adding the product to either the cart or the wishlist.
@@ -91,13 +91,14 @@ def product(request, slug, template="shop/product.html",
         "related_products": related,
         "add_product_form": add_product_form
     }
+    context.update(extra_context or {})
     templates = [u"shop/%s.html" % str(product.slug), template]
     return render(request, templates, context)
 
 
 @never_cache
 def wishlist(request, template="shop/wishlist.html",
-             form_class=AddProductForm):
+             form_class=AddProductForm, extra_context=None):
     """
     Display the wishlist and handle removing items from the wishlist and
     adding them to the cart.
@@ -138,6 +139,7 @@ def wishlist(request, template="shop/wishlist.html",
     wishlist = ProductVariation.objects.filter(**f).select_related("product")
     wishlist = sorted(wishlist, key=lambda v: skus.index(v.sku))
     context = {"wishlist_items": wishlist, "error": error}
+    context.update(extra_context or {})
     response = render(request, template, context)
     if len(wishlist) < len(skus):
         skus = [variation.sku for variation in wishlist]
@@ -148,7 +150,8 @@ def wishlist(request, template="shop/wishlist.html",
 @never_cache
 def cart(request, template="shop/cart.html",
          cart_formset_class=CartItemFormSet,
-         discount_form_class=DiscountForm):
+         discount_form_class=DiscountForm,
+         extra_context=None):
     """
     Display cart and handle removing items from the cart.
     """
@@ -201,7 +204,7 @@ def cart(request, template="shop/cart.html",
 
 
 @never_cache
-def checkout_steps(request, form_class=OrderForm):
+def checkout_steps(request, form_class=OrderForm, extra_context=None):
     """
     Display the order form and handle processing of each step.
     """
@@ -226,9 +229,9 @@ def checkout_steps(request, form_class=OrderForm):
         form_class = import_dotted_path(settings.SHOP_CHECKOUT_FORM_CLASS)
 
     initial = checkout.initial_order_data(request, form_class)
-    step = int(request.POST.get("step", None)
-               or initial.get("step", None)
-               or checkout.CHECKOUT_STEP_FIRST)
+    step = int(request.POST.get("step", None) or
+               initial.get("step", None) or
+               checkout.CHECKOUT_STEP_FIRST)
     form = form_class(request, step, initial=initial)
     data = request.POST
     checkout_errors = []
@@ -324,13 +327,16 @@ def checkout_steps(request, form_class=OrderForm):
     template = "shop/%s.html" % step_vars["template"]
     context = {"CHECKOUT_STEP_FIRST": step == checkout.CHECKOUT_STEP_FIRST,
                "CHECKOUT_STEP_LAST": step == checkout.CHECKOUT_STEP_LAST,
+               "CHECKOUT_STEP_PAYMENT": (settings.SHOP_PAYMENT_STEP_ENABLED and
+                   step == checkout.CHECKOUT_STEP_PAYMENT),
                "step_title": step_vars["title"], "step_url": step_vars["url"],
                "steps": checkout.CHECKOUT_STEPS, "step": step, "form": form}
+    context.update(extra_context or {})
     return render(request, template, context)
 
 
 @never_cache
-def complete(request, template="shop/complete.html"):
+def complete(request, template="shop/complete.html", extra_context=None):
     """
     Redirected to once an order is complete - pass the order object
     for tracking items via Google Anayltics, and displaying in
@@ -352,11 +358,12 @@ def complete(request, template="shop/complete.html"):
         setattr(items[i], "name", names[item.sku])
     context = {"order": order, "items": items, "has_pdf": HAS_PDF,
                "steps": checkout.CHECKOUT_STEPS}
+    context.update(extra_context or {})
     return render(request, template, context)
 
 
 def invoice(request, order_id, template="shop/order_invoice.html",
-                               template_pdf="shop/order_invoice_pdf.html"):
+            template_pdf="shop/order_invoice_pdf.html", extra_context=None):
     """
     Display a plain text invoice for the given order. The order must
     belong to the user which is checked via session or ID if
@@ -368,6 +375,7 @@ def invoice(request, order_id, template="shop/order_invoice.html",
         raise Http404
     context = {"order": order}
     context.update(order.details_as_dict())
+    context.update(extra_context or {})
     context = RequestContext(request, context)
     if request.GET.get("format") == "pdf":
         response = HttpResponse(content_type="application/pdf")
@@ -380,7 +388,8 @@ def invoice(request, order_id, template="shop/order_invoice.html",
 
 
 @login_required
-def order_history(request, template="shop/order_history.html"):
+def order_history(request, template="shop/order_history.html",
+                  extra_context=None):
     """
     Display a list of the currently logged-in user's past orders.
     """
@@ -392,6 +401,7 @@ def order_history(request, template="shop/order_history.html"):
                       settings.SHOP_PER_PAGE_CATEGORY,
                       settings.MAX_PAGING_LINKS)
     context = {"orders": orders, "has_pdf": HAS_PDF}
+    context.update(extra_context or {})
     return render(request, template, context)
 
 

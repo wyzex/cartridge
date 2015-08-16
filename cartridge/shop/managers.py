@@ -2,11 +2,10 @@ from __future__ import unicode_literals
 from future.builtins import str
 from future.builtins import zip
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import datetime, timedelta
 
 from django.db.models import Manager, Q
-from django.utils.datastructures import SortedDict
 from django.utils.timezone import now
 
 from mezzanine.conf import settings
@@ -17,31 +16,30 @@ class CartManager(Manager):
 
     def from_request(self, request):
         """
-        Return a cart by ID stored in the session, creating it if not
-        found as well as removing old carts prior to creating a new
-        cart.
+        Return a cart by ID stored in the session, updating its last_updated
+        value and removing old carts. A new cart will be created (but not
+        persisted in the database) if the session cart is expired or missing.
         """
         cart_id = request.session.get("cart", None)
-        cart = None
-        if cart_id:
-            try:
-                cart = self.current().get(id=cart_id)
-            except self.model.DoesNotExist:
-                request.session["cart"] = None
-            else:
-                # Update timestamp and clear out old carts.
-                cart.last_updated = now()
-                cart.save()
-                self.expired().delete()
-        if not cart:
-            # Forget what checkout step we were up to.
+        cart = self.current().filter(id=cart_id)
+        last_updated = now()
+
+        # Update timestamp and clear out old carts.
+        if cart_id and cart.update(last_updated=last_updated):
+            self.expired().delete()
+        elif cart_id:
+            # Cart has expired. Delete the cart id and
+            # forget what checkout step we were up to.
+            del request.session["cart"]
             try:
                 del request.session["order"]["step"]
-                request.session.modified = True
             except KeyError:
                 pass
-            cart = self.model(last_updated=now())
-        return cart
+
+        # This is a cheeky way to save a database call: since Cart only has
+        # two fields and we know both of their values, we can simply create
+        # a cart instance without taking a trip to the database via the ORM.
+        return self.model(id=cart_id, last_updated=last_updated)
 
     def expiry_time(self):
         """
@@ -119,7 +117,7 @@ class ProductVariationManager(Manager):
         Create all unique variations from the selected options.
         """
         if options:
-            options = SortedDict(options)
+            options = OrderedDict(options)
             # Build all combinations of options.
             variations = [[]]
             for values_list in list(options.values()):

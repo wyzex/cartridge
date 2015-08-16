@@ -135,6 +135,7 @@ register_setting(
         "string is used, will fall back to the system's locale.",
     editable=False,
     default="",
+    translatable=True,
 )
 
 register_setting(

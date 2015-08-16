@@ -8,7 +8,7 @@ import mezzanine.core.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('shop', '0002_auto_20141227_1331'),
+        ('shop', '0005_auto_20150527_1127'),
     ]
 
     operations = [

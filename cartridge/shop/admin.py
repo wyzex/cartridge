@@ -35,7 +35,9 @@ from django.db.models import ImageField
 from django.utils.translation import ugettext_lazy as _
 
 from mezzanine.conf import settings
-from mezzanine.core.admin import DisplayableAdmin, TabularDynamicInlineAdmin
+from mezzanine.core.admin import (DisplayableAdmin,
+                                  TabularDynamicInlineAdmin,
+                                  BaseTranslationModelAdmin)
 from mezzanine.pages.admin import PageAdmin
 
 from cartridge.shop.fields import MoneyField
@@ -216,8 +218,8 @@ class ProductAdmin(DisplayableAdmin):
                              if request.POST.getlist(f)])
             # Create a list of image IDs that have been marked to delete.
             deleted_images = [request.POST.get(f.replace("-DELETE", "-id"))
-                              for f in request.POST if f.startswith("images-")
-                              and f.endswith("-DELETE")]
+                for f in request.POST
+                if f.startswith("images-") and f.endswith("-DELETE")]
 
             # Create new variations for selected options.
             self._product.variations.create_from_options(options)
@@ -240,8 +242,25 @@ class ProductAdmin(DisplayableAdmin):
             # variation to the product.
             self._product.copy_default_variation()
 
+            # Save every translated fields from ``ProductOption`` into
+            # the required ``ProductVariation``
+            if settings.USE_MODELTRANSLATION:
+                from collections import OrderedDict
+                from modeltranslation.utils import (build_localized_fieldname
+                                                    as _loc)
+                for opt_name in options:
+                    for opt_value in options[opt_name]:
+                        opt_obj = ProductOption.objects.get(type=opt_name[6:],
+                                                            name=opt_value)
+                        params = {opt_name: opt_value}
+                        for var in self._product.variations.filter(**params):
+                            for code in OrderedDict(settings.LANGUAGES):
+                                setattr(var, _loc(opt_name, code),
+                                        getattr(opt_obj, _loc('name', code)))
+                            var.save()
 
-class ProductOptionAdmin(admin.ModelAdmin):
+
+class ProductOptionAdmin(BaseTranslationModelAdmin):
     ordering = ("type", "name")
     list_display = ("type", "name")
     list_display_links = ("type",)
